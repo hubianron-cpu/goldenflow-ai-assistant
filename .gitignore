@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+dist
+.env*
+!.env.example
+dev-server.out.log
+dev-server.err.log
+prod-server.out.log
+prod-server.err.log
+*.tsbuildinfo
