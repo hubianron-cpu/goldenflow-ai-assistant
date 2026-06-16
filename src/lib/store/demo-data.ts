@@ -18,7 +18,7 @@ export const defaultBusiness: Business = {
   timezone: "Asia/Jerusalem",
   pilotSettings: {
     pilotEnabled: false,
-    agentEnabled: false,
+    agentEnabled: true,
     whatsappReceivingEnabled: false,
     whatsappSendingEnabled: false,
     crmSyncEnabled: false,
@@ -113,11 +113,7 @@ export const defaultAgent: Agent = {
 };
 
 export const initialState: AppState = {
-  currentUser: {
-    id: "user_demo_owner",
-    name: "בעל העסק",
-    email: "owner@goldenflow.local"
-  },
+  currentUser: null,
   business: defaultBusiness,
   agent: defaultAgent,
   leads: [],

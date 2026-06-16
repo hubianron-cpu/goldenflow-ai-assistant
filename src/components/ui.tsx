@@ -17,13 +17,15 @@ export function Field({
   value,
   onChange,
   textarea,
-  placeholder
+  placeholder,
+  type = "text"
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   textarea?: boolean;
   placeholder?: string;
+  type?: "text" | "email" | "password";
 }) {
   const classes =
     "w-full rounded-md border border-black/10 bg-paper px-3 py-2 text-sm outline-none transition focus:border-gold focus:bg-white";
@@ -33,7 +35,7 @@ export function Field({
       {textarea ? (
         <textarea className={`${classes} min-h-20 resize-y`} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
       ) : (
-        <input className={classes} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        <input className={classes} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
       )}
     </label>
   );

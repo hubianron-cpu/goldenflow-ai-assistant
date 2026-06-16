@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Flame, MessageCircle, Pause, Play, RefreshCcw, Send, ShieldCheck, UserCheck, XCircle } from "lucide-react";
 import { Shell, type AppTab } from "@/components/shell";
 import { EmptyState, Field, HeatBadge, Panel } from "@/components/ui";
+import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "@/lib/supabase/browser";
+import { readClientStageEnvironment } from "@/lib/staging/env";
 import { runAgentBrain, summarizeConversation } from "@/lib/agent-brain/brain";
 import { updateMemory, buildMemorySummary } from "@/lib/conversation/memory";
 import { recommendAction } from "@/lib/actions/action-engine";
@@ -58,9 +60,23 @@ function createInitialSummary(state: ConversationState) {
   };
 }
 
-function AuthScreen({ onLogin }: { onLogin: (name: string, email: string) => void }) {
+type AuthResult = { ok: true; message?: string } | { ok: false; message: string };
+
+function AuthScreen({ onLogin, supabaseConfigured }: { onLogin: (name: string, email: string, password: string, mode: "login" | "signup") => Promise<AuthResult>; supabaseConfigured: boolean }) {
   const [name, setName] = useState("בעל העסק");
   const [email, setEmail] = useState("owner@goldenflow.local");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [status, setStatus] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submit() {
+    setIsSubmitting(true);
+    setStatus(null);
+    const result = await onLogin(name, email, password, mode);
+    setStatus(result.message ?? null);
+    setIsSubmitting(false);
+  }
 
   return (
     <main className="grid min-h-screen place-items-center px-4 py-10">
@@ -68,18 +84,34 @@ function AuthScreen({ onLogin }: { onLogin: (name: string, email: string) => voi
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-gold">GoldenFlow AI Assistant</p>
         <h1 className="mt-2 text-3xl font-bold text-ink">עובד דיגיטלי ללידים ופולואפים</h1>
         <p className="mt-3 text-sm leading-6 text-black/65">
-          MVP פנימי ונפרד לחלוטין מה-CRM. התחברות הדמו יוצרת סביבת עסק מבודדת עם `business_id`.
+          MVP פנימי ונפרד לחלוטין מה-CRM. ב-Staging הכניסה מתבצעת דרך Supabase Auth אמיתי.
         </p>
         <div className="mt-5 grid gap-3">
+          <div className="grid grid-cols-2 gap-2 rounded-md bg-paper p-1">
+            <button type="button" onClick={() => setMode("login")} className={`rounded px-3 py-2 text-sm font-bold ${mode === "login" ? "bg-white shadow-sm" : ""}`}>
+              התחברות
+            </button>
+            <button type="button" onClick={() => setMode("signup")} className={`rounded px-3 py-2 text-sm font-bold ${mode === "signup" ? "bg-white shadow-sm" : ""}`}>
+              הרשמה
+            </button>
+          </div>
           <Field label="שם" value={name} onChange={setName} />
-          <Field label="אימייל" value={email} onChange={setEmail} />
+          <Field label="אימייל" value={email} onChange={setEmail} type="email" />
+          <Field label="סיסמה" value={password} onChange={setPassword} type="password" />
+          {!supabaseConfigured ? (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+              Supabase Staging לא מוגדר. במצב development בלבד תתאפשר כניסת דמו מסומנת.
+            </p>
+          ) : null}
+          {status ? <p className="rounded-md bg-paper px-3 py-2 text-sm font-semibold text-black/70">{status}</p> : null}
           <button
             type="button"
-            onClick={() => onLogin(name, email)}
+            onClick={submit}
+            disabled={isSubmitting}
             className="mt-2 flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-bold text-white transition hover:bg-black"
           >
             <ShieldCheck size={18} />
-            כניסה / הרשמה
+            {isSubmitting ? "בודק..." : mode === "login" ? "התחברות" : "הרשמה"}
           </button>
         </div>
       </section>
@@ -1068,11 +1100,40 @@ export default function Home() {
   const [state, setStateValue] = useState<AppState>(initialState);
   const [activeTab, setActiveTab] = useState<AppTab>("setup");
   const [isLoaded, setIsLoaded] = useState(false);
+  const clientEnv = readClientStageEnvironment();
+  const supabaseConfigured = isSupabaseBrowserConfigured();
 
   useEffect(() => {
-    setStateValue(loadState());
-    setIsLoaded(true);
-  }, []);
+    let active = true;
+    async function load() {
+      const localState = loadState();
+      if (!supabaseConfigured) {
+        if (active) {
+          setStateValue(localState);
+          setIsLoaded(true);
+        }
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setStateValue({
+        ...localState,
+        currentUser: data.session?.user
+          ? {
+              id: data.session.user.id,
+              name: String(data.session.user.user_metadata?.full_name ?? data.session.user.email ?? "משתמש"),
+              email: data.session.user.email ?? ""
+            }
+          : null
+      });
+      setIsLoaded(true);
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [supabaseConfigured]);
 
   const setState = (nextState: AppState) => {
     setStateValue(nextState);
@@ -1107,12 +1168,41 @@ export default function Home() {
   if (!state.currentUser) {
     return (
       <AuthScreen
-        onLogin={(name, email) =>
+        supabaseConfigured={supabaseConfigured}
+        onLogin={async (name, email, password, mode) => {
+          if (!supabaseConfigured) {
+            if (clientEnv.NEXT_PUBLIC_APP_ENV === "staging") {
+              return { ok: false, message: "חסרים Supabase Staging credentials ולכן auth אמיתי חסום." };
+            }
+            if (!email.trim()) return { ok: false, message: "נדרש אימייל." };
+            setState({
+              ...initialState,
+              currentUser: { id: uid("user_demo"), name, email }
+            });
+            return { ok: true, message: "נכנסת במצב דמו לפיתוח מקומי בלבד." };
+          }
+          if (!password || password.length < 8) {
+            return { ok: false, message: "נדרשת סיסמה באורך 8 תווים לפחות." };
+          }
+          const supabase = getSupabaseBrowserClient();
+          const result =
+            mode === "signup"
+              ? await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
+              : await supabase.auth.signInWithPassword({ email, password });
+          if (result.error) return { ok: false, message: result.error.message };
+          if (!result.data.session) {
+            return { ok: true, message: "נוצר משתמש. אם Email Confirmation פעיל ב-Staging, יש לאשר אימייל לפני התחברות." };
+          }
           setState({
             ...initialState,
-            currentUser: { id: uid("user"), name, email }
-          })
-        }
+            currentUser: {
+              id: result.data.session.user.id,
+              name: String(result.data.session.user.user_metadata?.full_name ?? name),
+              email: result.data.session.user.email ?? email
+            }
+          });
+          return { ok: true };
+        }}
       />
     );
   }
@@ -1121,7 +1211,11 @@ export default function Home() {
     <Shell
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      onLogout={() => {
+      isStaging={clientEnv.isStaging}
+      onLogout={async () => {
+        if (supabaseConfigured) {
+          await getSupabaseBrowserClient().auth.signOut();
+        }
         resetState();
         setStateValue({ ...initialState, currentUser: null });
       }}

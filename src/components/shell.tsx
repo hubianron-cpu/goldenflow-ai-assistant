@@ -7,7 +7,8 @@ export type AppTab = "setup" | "simulator" | "dashboard" | "conversations" | "le
 type ShellProps = {
   activeTab: AppTab;
   onTabChange: (tab: AppTab) => void;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
+  isStaging?: boolean;
   children: React.ReactNode;
 };
 
@@ -21,7 +22,7 @@ const navItems = [
   { id: "control", label: "בקרה", icon: SlidersHorizontal }
 ] satisfies { id: AppTab; label: string; icon: typeof Bot }[];
 
-export function Shell({ activeTab, onTabChange, onLogout, children }: ShellProps) {
+export function Shell({ activeTab, onTabChange, onLogout, isStaging = false, children }: ShellProps) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-black/10 bg-paper/90 backdrop-blur">
@@ -30,14 +31,17 @@ export function Shell({ activeTab, onTabChange, onLogout, children }: ShellProps
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-gold">GoldenFlow</p>
             <h1 className="text-xl font-bold text-ink sm:text-2xl">AI Assistant</h1>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm font-semibold text-ink transition hover:border-gold"
-          >
-            <LogOut size={18} />
-            יציאה
-          </button>
+          <div className="flex items-center gap-2">
+            {isStaging ? <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900">STAGING</span> : null}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm font-semibold text-ink transition hover:border-gold"
+            >
+              <LogOut size={18} />
+              יציאה
+            </button>
+          </div>
         </div>
         <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3">
           {navItems.map((item) => {

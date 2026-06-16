@@ -48,6 +48,18 @@ MVP נפרד לחלוטין מ-GoldenFlow CRM עבור ניהול שיחות AI 
 - Migration לא destructive: `supabase/003_phase3_whatsapp_pilot.sql`
 - API contract: `docs/goldenflow-crm-api-contract.md`
 
+## שלב 4
+
+- Supabase Auth אמיתי כאשר Staging credentials מוגדרים
+- הפרדה בין Supabase Browser Client ל-Server Client
+- Development-only demo fallback כאשר Supabase לא מוגדר, לא כתחליף ל-Staging
+- OpenAI Provider דרך Responses API בצד שרת בלבד
+- `LocalDeterministicProvider` נשמר כ-provider מקומי ובדיקתי
+- Migration מתקנת ליצירת עסק + membership ראשוני תחת RLS: `supabase/004_phase4_staging_auth.sql`
+- סימון STAGING בממשק לפי `NEXT_PUBLIC_APP_ENV=staging`
+- בדיקת Stage 4 סטטית: `npm run stage4:audit`
+- Runbook: `docs/stage4-staging-runbook.md`
+
 ## גבולות MVP
 
 אין חיבור ל-WhatsApp, CRM אמיתי, Stripe, Meta API, Google Calendar או Voice AI.

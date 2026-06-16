@@ -245,7 +245,7 @@ export type Conversation = {
 export type AgentRun = {
   id: string;
   promptVersionId: string;
-  model: "local-rules-v2";
+  model: "local-rules-v2" | "openai-responses" | string;
   startedAt: string;
   completedAt: string;
   latencyMs: number;

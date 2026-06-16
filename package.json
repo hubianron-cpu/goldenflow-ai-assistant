@@ -8,7 +8,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "agent:evaluate": "tsx scripts/evaluate-agent.ts",
-    "pilot:evaluate": "tsx scripts/evaluate-pilot.ts"
+    "agent:evaluate:openai": "tsx scripts/evaluate-openai-agent.ts",
+    "pilot:evaluate": "tsx scripts/evaluate-pilot.ts",
+    "stage4:audit": "tsx scripts/stage4-audit.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

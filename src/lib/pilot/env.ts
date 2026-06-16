@@ -46,6 +46,15 @@ export function readPilotEnvironment(source: Record<string, string | undefined> 
   if (env.APP_ENV !== "production" && env.GOLDENFLOW_CRM_API_BASE_URL?.includes("production")) {
     errors.push("Development/Staging must not point at a production CRM API URL.");
   }
+  if (env.APP_ENV === "staging" && env.WHATSAPP_PROVIDER !== "mock") {
+    errors.push("Stage 4 requires WhatsApp to remain mock/disabled.");
+  }
+  if (env.APP_ENV === "staging" && env.WHATSAPP_SENDING_ENABLED === "true") {
+    errors.push("Stage 4 requires WhatsApp sending to remain disabled.");
+  }
+  if (env.APP_ENV === "staging" && env.GOLDENFLOW_CRM_INTEGRATION_ENABLED === "true") {
+    errors.push("Stage 4 requires GoldenFlow CRM integration to remain disabled.");
+  }
 
   return {
     ...env,
